@@ -1,0 +1,1044 @@
+#include <iostream>
+#include <cstdlib>
+#include <iomanip>
+using namespace std;
+using namespace main_savitch_11;
+
+// CONSTRUCTORS and DESTRUCTOR
+
+// default constructor creates an empty set
+
+template <class Item>
+
+set<Item>::set( )
+
+{
+
+// initialize data_count and child_count
+
+data_count = 0;
+
+child_count = 0;
+
+}
+
+
+// copy constructor
+
+template <class Item>
+
+set<Item>::set(const set& source)
+
+{
+
+// call make_copy function to create a copy
+
+make_copy(source);
+
+}
+
+
+// MODIFICATION MEMBER FUNCTIONS
+
+// assignment operator definition
+
+template <class Item>
+
+void set<Item>::operator =(const set& source)
+
+{
+
+// call make_copy function to create a copy
+
+make_copy(source);
+
+}
+
+// function to create a new copy of data array
+
+template <class Item>
+
+void set<Item>::copy_data(const set& obj)
+
+{
+
+// copy the data_count and child_count values
+
+data_count = obj.data_count;
+
+child_count = obj.child_count;
+
+// copy elements
+
+copy(obj.data, obj.data+obj.data_count, data);
+
+}
+
+
+// function to create a copy of the set elements
+
+template <class Item>
+
+void set<Item>::make_copy(const set& obj)
+
+{
+
+// call copy_data to create a copy of the data
+
+// array
+
+copy_data(obj);
+
+// assign number of child
+
+child_count = obj.child_count;
+
+// call for each child
+
+for(int idx = 0; idx < obj.child_count; idx++)
+
+{
+
+// create a new set object
+
+subset[idx] = new set();
+
+subset[idx]->make_copy(*obj.subset[idx]);
+
+}
+
+}
+
+
+// function to clear the elements of a B-Tree
+
+template <class Item>
+
+void set<Item>::clear( )
+
+{
+
+// clear the data
+
+data_count = 0;
+
+
+for(int idx = 0; idx < child_count; idx++)
+{
+
+// clear the data for all subset
+
+subset[idx]->clear();
+
+}
+
+// clear the child count
+
+child_count = 0;
+
+}
+
+
+// CONSTANT MEMBER FUNCTIONS
+
+// function to check for the presence of an Item
+
+template <class Item>
+
+std::size_t set<Item>::count(const Item& target) const
+
+{
+
+size_t i = 0;
+
+// check if the set is empty
+
+if (empty())
+
+return false;
+
+// compute the value of i
+
+while (data[i] < target && i < data_count)
+
+{
+
+// increment the value of i
+
+i++;
+
+}
+
+// check if the current element is target
+
+if( (i < data_count) && !(target < data[i]))
+
+return 1;
+
+// if there are no children then return 0
+
+else if(is_leaf())
+
+// this means there are no children hence return
+
+// 0
+
+return 0;
+
+else
+
+// search in the subset
+
+return subset[i] -> count(target);
+
+}
+
+// function to print the set elements for debugging
+
+template <class Item>
+
+void set<Item>::print(int indent) const
+
+{
+  const int EXTRA_INDENTATION = 4;
+  size_t i;
+  std::cout << std::setw(indent) << "";
+  for(i = 0; i < data_count; ++i)
+  {
+    std::cout << data[i] << " ";
+  }
+  std::cout << std::endl;
+  for(i = 0; i < child_count; ++i)
+  {
+    subset[i]->print(indent+EXTRA_INDENTATION);
+  }
+
+
+}
+
+
+// function to insert new Item
+
+template <class Item>
+
+bool set<Item>::insert(const Item& entry)
+
+{
+
+// check if loose_insert inserted an element
+
+// or not
+
+if(!loose_insert(entry))
+
+// if not inserted then return false
+
+return false;
+
+// fix the root
+
+if(data_count > MAXIMUM)
+
+{
+
+// create a new set object
+
+set<Item>* new_set = new set<Item>();
+
+// assign the data_count and child_count
+
+new_set->data_count = data_count;
+
+new_set->child_count = child_count;
+
+// copy values
+
+copy(data, data + data_count, new_set->data);
+
+copy(subset, subset + child_count,
+
+new_set->subset);
+
+// reinitialize the root values
+
+data_count = 0;
+
+child_count = 1;
+
+// create the subset
+
+subset[0] = new_set;
+
+// fix extra element
+
+fix_excess(0);
+
+}
+
+return true;
+
+}
+
+
+// HELPER MEMBER FUNCTIONS
+
+// function to loosely insert an element
+
+template <class Item>
+
+bool set<Item>::loose_insert(const Item& entry)
+
+{
+
+int i = data[0];
+
+int idx;
+
+
+// find the location of the value to be inserted
+
+for(idx = 0; idx < data_count; idx++)
+
+{
+
+if(data[idx] < entry)
+
+continue;
+
+else
+
+{
+
+i = idx;
+
+break;
+
+}
+
+}
+
+if(idx==data_count && i == data[0])
+
+// assign data_count to the i
+
+i = data_count;
+
+// check if i is less thatn the data_count and
+
+// entry is not less than the data[i]
+
+if( (i < data_count) && !(entry < data[i]))
+
+{
+
+// return the false value
+
+return false;
+
+}
+
+else if(is_leaf())
+
+{
+
+// shift all elements
+
+for(int jdx = data_count; jdx > i; jdx--)
+
+{
+
+data[jdx] = data[jdx - 1];
+
+}
+
+// add entry
+
+// assign entry to the data[i]
+
+data[i] = entry;
+
+// increment the data_count
+
+data_count++;
+
+return true;
+
+}
+
+else
+
+{
+
+// call loose_insert on subset[i] value
+
+bool is_entered = subset[i] -> loose_insert(
+
+entry);
+
+// check if there is an excess of elements in the
+
+// data
+if(subset[i] -> data_count > MAXIMUM)
+// if excess number of elements then call
+// fix_excess function
+fix_excess(i);
+return is_entered;
+}
+
+}
+
+// function to erase an Item
+
+template <class Item>
+
+std::size_t set<Item>::erase(const Item& target)
+
+{
+
+// check if loose_insert is done or not
+
+if(!loose_erase(target))
+
+// if loose_insert returns false that means the
+
+// element is already present. Hence return false
+
+return false;
+
+if((data_count == 0) && (child_count == 1))
+
+{
+
+data_count = subset[0]->data_count;
+
+child_count = subset[0]->child_count;
+
+copy(subset[0]->data, subset[0]->data +
+
+subset[0]->data_count, data);
+
+copy(subset[0]->subset, subset[0]->subset +
+
+subset[0]->child_count, subset);
+
+}
+
+return true;
+
+}
+
+// function to loosely erase an Item
+
+template <class Item>
+
+bool set<Item>::loose_erase(const Item& entry)
+
+{
+
+int i = data[0];
+
+int idx;
+
+for(idx = 0; idx < data_count; idx++)
+
+{
+
+if(data[idx] < entry)
+
+continue;
+
+else
+
+{
+
+i = idx;
+
+break;
+
+}
+
+}
+
+if(idx==data_count && i == data[0])
+
+i = data_count;
+
+
+if( is_leaf() && ((entry < data[i]) ||
+
+(i == data_count)))
+
+{
+
+// target not found. Hence, return false
+
+return false;
+
+}
+
+else if( is_leaf() && !(entry < data[i]))
+
+{
+
+// remove the target and return true
+
+// if element is the last element then
+
+// just decrement the count
+
+if(i == data_count - 1)
+
+data_count--;
+
+else
+
+{
+
+for(idx = i; idx < data_count; idx++)
+
+{
+
+data[idx] = data[idx+1];
+
+}
+
+// increment the data_count
+
+data_count--;
+
+}
+
+return true;
+
+}
+
+else if(!is_leaf() && ((entry < data[i]) ||
+
+(i == data_count)))
+
+{
+
+// call loose_erase on subset[i] value
+
+bool is_erased = subset[i] -> loose_erase(
+
+entry);
+
+// check if there is a shortage of elements in
+
+// the data
+
+if(subset[i] -> data_count < MINIMUM)
+
+// if less number of elements then call
+
+// fix_shortage function
+
+fix_shortage(i);
+
+return is_erased;
+
+}
+
+else
+
+{
+
+// call remove_biggest function to remove the
+
+// biggest element from the subset
+
+subset[i]->remove_biggest(data[i]);
+
+// check if there is a shortage of elements in
+
+// the data
+
+if(subset[i]->data_count < MINIMUM)
+
+{
+
+// if less number of elements then call
+
+// fix_shortage function
+
+fix_shortage(i);
+
+}
+
+return true;
+
+}
+
+}
+
+// function to fix the element shortage
+
+template <class Item>
+
+void set<Item>::fix_shortage(std::size_t i)
+
+{
+
+// case 1
+
+if(i > 0 && subset[i-1]->data_count > MINIMUM)
+
+{
+
+// shift all elements
+
+for(int idx = subset[i]->data_count - 1;
+
+idx > 0; idx--)
+
+{
+
+subset[i]->data[idx] = subset[i]->data[
+
+idx - 1];
+
+}
+
+// add the last element from the root to
+
+// the front of subset[i]
+
+subset[i]->data[0] = data[i -1];
+
+// increment the data_count of the subset[i]
+
+subset[i]->data_count++;
+
+// transfer the final item from subset to root
+
+data[i - 1] = subset[i - 1]->data[
+
+subset[i - 1]->data_count - 1];
+
+// decrement the data_count of subset[i - 1]
+
+subset[i - 1]->data_count--;
+
+// transfer the final child of subset[i-1]
+
+// to the subset[i]
+
+if(!subset[i-1]->is_leaf())
+
+{
+
+// shift all elements
+
+for(int idx = subset[i]->child_count - 1;
+
+idx > 0; idx--)
+
+{
+
+// assign the subset[idx - 1] of
+
+// subset[i] to the subset[idx] of the
+
+// subset[i]
+
+
+subset[i]->subset[idx] = subset[
+i]->subset[idx - 1];
+
+}
+
+// assign the subset[i -1] to the subset[i]
+
+subset[i]->subset[0] = subset[i - 1]->
+
+subset[subset[i - 1]->child_count - 1];
+
+// decrement the child_count of subset[i -1]
+
+subset[i - 1]->child_count--;
+
+// increment the child_count of subset[i]
+
+subset[i]->child_count++;
+
+}
+
+}
+
+// case 2
+
+if(i < child_count && subset[i+1]->data_count >
+
+MINIMUM)
+
+{
+
+// add the ith element from the root to
+
+// the end of subset[i]
+
+subset[i]->data[subset[i]->data_count++] =
+
+data[i - 1];
+
+// transfer the first item from
+
+// subset[i+1] to root
+
+data[i - 1] = subset[i + 1]->data[0];
+
+// shift all elements
+
+for(int idx = 0; idx < subset[i + 1]->
+
+data_count; idx++)
+
+{
+
+// assign the subset[idx + 1] of
+
+// subset[i+1] to the subset[idx + 1] of the
+
+// subset[i + 1]
+
+subset[i+1]->data[idx] = subset[i+1]->
+
+data[idx + 1];
+
+}
+
+// decrement the data_count of subset[i+1]
+
+subset[i + 1]->data_count--;
+
+// transfer the first child of subset[i+1]
+
+// to the subset[i]
+
+if(!subset[i+1]->is_leaf())
+
+{
+
+subset[i]->subset[subset[i]->
+
+child_count++] = subset[i + 1]->
+
+subset[0];
+
+// shift all elements
+
+for(int idx = 0; idx < subset[i + 1]->
+
+child_count; idx++)
+
+{
+
+// assign the subset[idx + 1] of
+
+// subset[i+1] to the subset[idx]
+
+// of the subset[i + 1]
+
+subset[i+1]->subset[idx] = subset[
+
+i+1]->subset[idx + 1];
+
+}
+
+// decrement the child_count of subset[i+1]
+
+subset[i + 1]->child_count--;
+
+}
+
+}
+
+// case 3
+
+if(i > 0 && subset[i-1]->data_count == MINIMUM)
+
+{
+
+// add the ith element from the root to
+
+// the end of subset[i-1]
+
+subset[i-1]->data[subset[i-1]->data_count++] =
+
+data[i - 1];
+
+for(int idx = i; idx < data_count ; idx++)
+
+{
+
+data[idx] = data[idx+1];
+
+}
+
+data_count--;
+
+// transfer all items and children from
+
+// subset[i] to subset[i-1] transfer items
+
+// first
+
+for(int idx = 0; idx < subset[i]->
+
+data_count; idx++)
+
+{
+
+// assign the data[idx] of
+
+// subset[i] to the data[subset[i-1]]
+
+// of the subset[i - 1]
+
+subset[i-1]->data[subset[i-1]->
+
+data_count++] = subset[i]->data[idx];
+
+}
+
+// assign 0 to the data_count of subset[i]
+
+subset[i]->data_count = 0;
+
+// transfer all children
+
+for(int idx = 0; idx < subset[i]->
+
+child_count; idx++)
+
+
+{
+subset[i-1]->subset[subset[i-1]->
+
+child_count++] = subset[i]->
+
+subset[idx];
+
+}
+
+subset[i]->child_count = 0;
+
+// delete node subset[i]
+
+for(int idx = i; idx < child_count; idx++)
+
+{
+
+subset[idx] = subset[idx+1];
+
+}
+
+child_count--;
+
+}
+
+// case 4
+
+if(i < child_count && subset[i+1]->data_count ==
+
+MINIMUM)
+
+{
+
+// add the ith element from the root to
+
+// the front of subset[i]
+
+subset[i]->data[subset[i]->data_count++] =
+
+data[i];
+
+for(int idx = i+1; idx < data_count ; idx++)
+
+{
+
+data[idx] = data[idx+1];
+
+}
+
+data_count--;
+
+// transfer all items and children from
+
+// subset[i+1] to subset[i]
+
+// transfer items first
+
+for(int idx = 0; idx < subset[i+1]->
+
+data_count; idx++)
+
+{
+
+subset[i]->data[subset[i]->
+
+data_count++] = subset[i+1]->data[idx];
+
+}
+
+subset[i+1]->data_count = 0;
+
+// transfer all children
+
+for(int idx = 0; idx < subset[i+1]->
+
+child_count; idx++)
+
+{
+
+subset[i]->subset[subset[i]->
+
+child_count++] = subset[i+1]->
+
+subset[idx];
+
+}
+
+subset[i+1]->child_count = 0;
+
+// delete node subset[i]
+
+for(int idx = i+1 ; idx < child_count; idx++)
+
+{
+
+subset[idx] = subset[idx+1];
+
+}
+
+child_count--;
+
+}
+
+}
+
+// function to remove the biggest element from the set
+
+template <class Item>
+
+void set<Item>::remove_biggest(Item& removed_entry)
+
+{
+
+if(is_leaf())
+
+{
+
+removed_entry = data[data_count - 1];
+
+data_count--;
+
+}
+
+else
+
+{
+
+subset[child_count - 1] -> remove_biggest(
+
+removed_entry);
+
+if(subset[child_count - 1]->data_count <
+
+MINIMUM)
+
+fix_shortage(child_count - 1);
+
+}
+
+}
+
+// function to fix the extra element
+
+template <class Item>
+
+void set<Item>::fix_excess(std::size_t i)
+
+{
+
+if(!(i < child_count))
+
+return;
+
+set<Item>* set_l = new set<Item>();
+
+set<Item>* set_r = new set<Item>();
+
+// split the data
+
+// copy data to new set
+
+copy(subset[i]->data, subset[i]->data +
+
+MINIMUM, set_l->data);
+
+// update the data count
+set_l->data_count = MINIMUM;
+
+copy(subset[i]->data + MINIMUM + 1, subset[i]->
+
+data + 2*MINIMUM + 1, set_r->data);
+
+set_r->data_count = MINIMUM;
+
+// split the children nodes
+
+copy(subset[i]->subset, subset[i]->subset +
+
+subset[i]->child_count/2, set_l->subset);
+
+set_l->child_count = subset[i]->child_count/2;
+
+copy(subset[i]->subset + subset[i]->child_count/2,
+
+subset[i]->subset + subset[i]->child_count,
+
+set_r->subset);
+
+set_r->child_count = subset[i]->child_count -
+
+subset[i]->child_count/2;
+
+// move the extra element upwards
+
+// shift all elements
+
+for(int jdx = data_count; jdx > i; jdx--)
+
+{
+
+data[jdx] = data[jdx - 1];
+
+}
+
+// add entry
+
+data[i] = subset[i]->data[MINIMUM];
+
+data_count++;
+
+// add the new sets as the subsets
+
+// shift all elements
+
+for(int jdx = child_count; jdx > i; jdx--)
+
+{
+
+subset[jdx] = subset[jdx - 1];
+
+}
+
+subset[i] = set_l;
+
+subset[i+1] = set_r;
+
+child_count++;
+
+}

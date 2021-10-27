@@ -1,0 +1,8 @@
+The first selection sort video of the Gypsy Folk Dance is algorithmically  incorrect. It modifies the
+selection sort algorithm by swapping the values immediately after they are compared, instead of swapping after
+going through the entire array. It is possible in the modified way to have multiple swaps in a single iteration
+of the array when you should only have one swap, which occurs after you iterate through the entire array.
+The correct way would be to keep track of the smallestValue, and as you iterate  through the array, if one
+value is smaller than the current smallestValue, you set that new value to the smallestValue. Then once you
+get to the end of the array, you swap the index of the smallestValue with the next index of the array that begins
+at where all values after it (or before it if you are iterating backwards) are still unsorted.
